@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Load Cloudflare API token from pass (omarchy/cloudflare/read-all).
+set -euo pipefail
+
+command -v pass >/dev/null 2>&1 || exit 0
+value="$(pass show omarchy/cloudflare/read-all 2>/dev/null || true)"
+if [[ -n "$value" ]]; then
+  printf '%s' "$value"
+fi
