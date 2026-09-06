@@ -130,12 +130,22 @@ Item {
 
   Process {
     id: passTokenLoad
+    onStarted: { stdoutBuf = ""; stderrBuf = "" }
+
+    property string stdoutBuf: ""
+    property string stderrBuf: ""
     command: ["bash", root.tokenScript]
-    stdout: StdioCollector {
-      id: passTokenOut
-      waitForEnd: true
+    stdout: SplitParser {
+      splitMarker: ""
+      onRead: function(chunk) {
+        passTokenLoad.stdoutBuf += chunk
+        if (passTokenLoad.stdoutBuf.length > 262144) {
+          passTokenLoad.signal(15)
+          passTokenLoad.stdoutBuf = ""
+        }
+      }
     }
-    onExited: root.notePassToken(String(passTokenOut.text || ""))
+    onExited: root.notePassToken(String(passTokenLoad.stdoutBuf || ""))
   }
 
   Component.onCompleted: passTokenLoad.running = true
@@ -169,14 +179,35 @@ Item {
 
   component Request: Process {
     id: req
+
+    property string stdoutBuf: ""
+    property string stderrBuf: ""
     property string url: ""
     property string body: ""
     property var handler: null
     property string configText: ""
 
     stdinEnabled: true
-    stdout: StdioCollector { id: out; waitForEnd: true }
-    stderr: StdioCollector { id: err; waitForEnd: true }
+    stdout: SplitParser {
+      splitMarker: ""
+      onRead: function(chunk) {
+        req.stdoutBuf += chunk
+        if (req.stdoutBuf.length > 262144) {
+          req.signal(15)
+          req.stdoutBuf = ""
+        }
+      }
+    }
+    stderr: SplitParser {
+      splitMarker: ""
+      onRead: function(chunk) {
+        req.stderrBuf += chunk
+        if (req.stderrBuf.length > 4096) {
+          req.signal(15)
+          req.stderrBuf = ""
+        }
+      }
+    }
 
     function send(targetUrl, postBody, onDone) {
       if (req.running) return false
@@ -191,14 +222,16 @@ Item {
     }
 
     onStarted: {
+      stdoutBuf = ""; stderrBuf = ""
+
       write(configText)
       configText = ""
       stdinEnabled = false
     }
 
     onExited: function(exitCode) {
-      var text = String(out.text || "")
-      var errorText = String(err.text || "").trim()
+      var text = String(req.stdoutBuf || "")
+      var errorText = String(req.stderrBuf || "").trim()
       if (req.handler) req.handler(exitCode, text, errorText)
       req.handler = null
     }
@@ -454,10 +487,32 @@ Item {
 
   Process {
     id: projectScan
-    stdout: StdioCollector { id: scanOut; waitForEnd: true }
-    stderr: StdioCollector { waitForEnd: true }
+    onStarted: { stdoutBuf = ""; stderrBuf = "" }
+
+    property string stdoutBuf: ""
+    property string stderrBuf: ""
+    stdout: SplitParser {
+      splitMarker: ""
+      onRead: function(chunk) {
+        projectScan.stdoutBuf += chunk
+        if (projectScan.stdoutBuf.length > 262144) {
+          projectScan.signal(15)
+          projectScan.stdoutBuf = ""
+        }
+      }
+    }
+    stderr: SplitParser {
+      splitMarker: ""
+      onRead: function(chunk) {
+        projectScan.stderrBuf += chunk
+        if (projectScan.stderrBuf.length > 4096) {
+          projectScan.signal(15)
+          projectScan.stderrBuf = ""
+        }
+      }
+    }
     onExited: function(exitCode) {
-      if (exitCode === 0) root.projectDirs = Api.parseProjectScan(String(scanOut.text || ""))
+      if (exitCode === 0) root.projectDirs = Api.parseProjectScan(String(projectScan.stdoutBuf || ""))
     }
   }
 
@@ -478,16 +533,33 @@ Item {
   }
 
   function notify(title, body) {
-    Quickshell.execDetached(["notify-send", String(title), String(body || "")])
+    Quickshell.execDetached(["notify-send", Model.plain(title, 80), Model.plain(body || "", 180)])
   }
 
   function openUrl(url) {
-    if (!url) return
-    Quickshell.execDetached(["omarchy-launch-browser", String(url)])
+    var u = String(url || "")
+    if (!/^https:\/\/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+$/.test(u)) return
+    Quickshell.execDetached(["omarchy-launch-browser", u])
   }
 
-  function runInTerminal(command) {
-    Quickshell.execDetached(["ghostty", "-e", "bash", "-lc", String(command)])
+  function validWorkerName(name) {
+    return /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(String(name || ""))
+  }
+
+  function runInTerminal(argv, workingDirectory) {
+    var cmd = ["ghostty"]
+    if (workingDirectory) {
+      var dir = String(workingDirectory)
+      if (dir.charAt(0) !== "/") return
+      var parts = dir.split("/")
+      for (var i = 0; i < parts.length; i++) {
+        if (parts[i] === "." || parts[i] === "..") return
+      }
+      cmd.push("--working-directory=" + dir)
+    }
+    cmd.push("-e")
+    for (var j = 0; j < argv.length; j++) cmd.push(argv[j])
+    Quickshell.execDetached(cmd)
   }
 
   function copyToClipboard(value, label) {
@@ -512,7 +584,7 @@ Item {
   }
 
   function flashStatus(text) {
-    root.actionStatus = String(text || "")
+    root.actionStatus = Model.plain(text, 180)
     statusTimer.restart()
   }
 
@@ -523,29 +595,31 @@ Item {
   }
 
   function tailWorker(name) {
-    if (!name) return
-    runInTerminal("wrangler tail " + Util.shellQuote(name))
-    root.flashStatus("Tailing " + name)
+    if (!validWorkerName(name)) return
+    runInTerminal(["wrangler", "tail", String(name)])
+    root.flashStatus("Tailing " + Model.plain(name, 80))
   }
 
   function deployProject(name) {
+    if (!validWorkerName(name)) return
     var dir = projectDirFor(name)
     if (dir === "") {
-      notify("Cloudflare", "No local wrangler project found for " + name)
+      notify("Cloudflare", "No local wrangler project found for " + Model.plain(name, 80))
       return
     }
-    runInTerminal("cd " + Util.shellQuote(dir) + " && wrangler deploy")
-    root.flashStatus("Deploying " + name)
+    runInTerminal(["wrangler", "deploy"], dir)
+    root.flashStatus("Deploying " + Model.plain(name, 80))
   }
 
   function rollbackProject(name) {
+    if (!validWorkerName(name)) return
     var dir = projectDirFor(name)
     if (dir === "") {
-      notify("Cloudflare", "No local wrangler project found for " + name)
+      notify("Cloudflare", "No local wrangler project found for " + Model.plain(name, 80))
       return
     }
-    runInTerminal("cd " + Util.shellQuote(dir) + " && wrangler rollback")
-    root.flashStatus("Rolling back " + name)
+    runInTerminal(["wrangler", "rollback"], dir)
+    root.flashStatus("Rolling back " + Model.plain(name, 80))
   }
 
   function purgeZone(zone) {

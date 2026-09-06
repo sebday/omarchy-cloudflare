@@ -50,6 +50,7 @@ Item {
       }
 
       Text {
+        textFormat: Text.PlainText
         anchors.centerIn: parent
         text: root.glyph
         color: root.statusColor
@@ -60,6 +61,7 @@ Item {
     }
 
     Text {
+      textFormat: Text.PlainText
       Layout.fillWidth: true
       Layout.alignment: Qt.AlignVCenter
       text: root.titleText
@@ -130,6 +132,7 @@ Item {
     radius: Style.cornerRadius
 
     Text {
+      textFormat: Text.PlainText
       id: pillText
       anchors.centerIn: parent
       text: parent.text

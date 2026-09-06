@@ -1,3 +1,17 @@
+
+function plain(value, maxLen) {
+  var s = String(value == null ? "" : value)
+  var max = maxLen || 240
+  var out = ""
+  for (var i = 0; i < s.length && out.length < max; i++) {
+    var code = s.charCodeAt(i)
+    if (code < 32 || (code >= 127 && code < 160)) continue
+    var c = s.charAt(i)
+    if (c === "<" || c === ">" || c === "&") continue
+    out += c
+  }
+  return out
+}
 // Formatting and row-shaping. Pure functions only — the panel renders whatever
 // the build* functions return and holds no knowledge of Cloudflare's response
 // shapes.

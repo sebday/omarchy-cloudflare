@@ -17,7 +17,11 @@ function curlConfig(token, url) {
   return [
     'silent',
     'show-error',
+    'fail',
     'max-time = 25',
+    'max-filesize = 1048576',
+    'proto = "=https"',
+    'noproxy = "*"',
     'header = "Authorization: Bearer ' + token + '"',
     'header = "Accept: application/json"',
     'url = "' + url + '"'
@@ -26,12 +30,12 @@ function curlConfig(token, url) {
 
 // argv for a GET. The config arrives on stdin; see curlConfig.
 function curlGet() {
-  return ["curl", "-K", "-"]
+  return ["curl", "-q", "--config", "-"]
 }
 
 // argv for a JSON POST.
 function curlPost(body) {
-  return ["curl", "-K", "-", "-X", "POST", "-H", "Content-Type: application/json", "--data-binary", body]
+  return ["curl", "-q", "--config", "-", "-X", "POST", "-H", "Content-Type: application/json", "--data-binary", body]
 }
 
 // Cloudflare wraps every REST response in {success, errors, result}. Returns a
@@ -225,7 +229,18 @@ function parseProjectScan(text) {
   var lines = String(text || "").split("\n")
   for (var i = 0; i < lines.length; i++) {
     var parts = lines[i].split("\t")
-    if (parts.length === 2 && parts[0] && parts[1]) map[parts[0]] = parts[1]
+    if (parts.length !== 2) continue
+    var n = parts[0]
+    var d = parts[1]
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(n)) continue
+    if (!d || d.charAt(0) !== "/") continue
+    var segs = d.split("/")
+    var bad = false
+    for (var j = 0; j < segs.length; j++) {
+      if (segs[j] === "." || segs[j] === "..") { bad = true; break }
+    }
+    if (bad) continue
+    map[n] = d
   }
   return map
 }

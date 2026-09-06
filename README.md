@@ -45,7 +45,7 @@ Widget options live on the bar layout entry in `~/.config/omarchy/shell.json`:
 }
 ```
 
-Set usage limits above zero to show Workers requests, R2 storage, and D1 rows read as meters. `projectsRoot` overrides the default scan of `~/projects` and `~/work` for local Wrangler project paths.
+Set usage limits above zero to show Workers requests, R2 storage, and D1 rows read as meters. `projectsRoot` overrides the default scan of `~/projects`, `~/src`, `~/dev`, and `~/code` for local Wrangler project paths.
 
 ## IPC
 
@@ -54,3 +54,15 @@ omarchy-shell shell toggle evo.cloudflare '{}'
 omarchy-shell evo.cloudflare refresh
 ```
 
+
+## Removing
+
+```bash
+omarchy plugin remove evo.cloudflare
+```
+
+That deletes the plugin directory. It does not delete:
+
+- `pass` entry `omarchy/cloudflare/read-all`
+
+Network: https://api.cloudflare.com and https://dash.cloudflare.com.

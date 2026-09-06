@@ -83,8 +83,8 @@ Panel {
   readonly property bool iconActive: cf && cf.loggedIn && !cf.warning
   readonly property string barTooltip: {
     if (!cf) return "Cloudflare"
-    if (cf.accountName !== "") return cf.accountName
-    if (cf.lastError !== "") return cf.lastError
+    if (cf.accountName !== "") return Model.plain(cf.accountName)
+    if (cf.lastError !== "") return Model.plain(cf.lastError)
     return cf.loggedIn ? "Cloudflare" : "Cloudflare — not logged in"
   }
 
@@ -433,6 +433,7 @@ Panel {
 
             iconComponent: Component {
               Text {
+                textFormat: Text.PlainText
                 text: "󰊠"
                 color: cf && cf.warning ? root.urgent : root.accent
                 font.family: root.fontFamily
@@ -557,6 +558,7 @@ Panel {
           }
 
           Text {
+            textFormat: Text.PlainText
             width: parent.width
             visible: cf && cf.lastError !== "" && !root.hasDisplaySections
             text: cf.lastError
@@ -568,6 +570,7 @@ Panel {
           }
 
           Text {
+            textFormat: Text.PlainText
             width: parent.width
             visible: cf && cf.lastError === "" && !root.hasDisplaySections
             text: cf && cf.busy ? "Loading…" : (cf && cf.loggedIn ? "No data" : "Not logged in")
@@ -602,6 +605,7 @@ Panel {
       spacing: Style.spacing.labelGap
 
       Text {
+        textFormat: Text.PlainText
         width: parent.width
         text: tile.value
         color: tile.valueColor
@@ -613,6 +617,7 @@ Panel {
       }
 
       Text {
+        textFormat: Text.PlainText
         width: parent.width
         text: tile.label
         color: root.dim
