@@ -26,7 +26,7 @@ Panel {
   readonly property color surface: Color.popups.background
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
-  readonly property var cf: bar && bar.shell ? bar.shell.serviceFor("evo.cloudflare") : null
+  readonly property var cf: hostWidget && hostWidget.cf ? hostWidget.cf : null
 
   readonly property string accountLegendLabel: {
     if (!cf)
@@ -560,8 +560,8 @@ Panel {
           Text {
             textFormat: Text.PlainText
             width: parent.width
-            visible: cf && cf.lastError !== "" && !root.hasDisplaySections
-            text: cf.lastError
+            visible: !!(cf && cf.lastError)
+            text: (cf && cf.lastError) ? cf.lastError : ""
             color: root.urgent
             font.family: root.fontFamily
             font.pixelSize: Style.font.body
@@ -572,8 +572,8 @@ Panel {
           Text {
             textFormat: Text.PlainText
             width: parent.width
-            visible: cf && cf.lastError === "" && !root.hasDisplaySections
-            text: cf && cf.busy ? "Loading…" : (cf && cf.loggedIn ? "No data" : "Not logged in")
+            visible: !root.hasDisplaySections && (!cf || cf.lastError === "")
+            text: !cf ? "Loading…" : (cf.busy ? "Loading…" : (cf.loggedIn ? "No data" : "Not logged in"))
             color: root.dim
             font.family: root.fontFamily
             font.pixelSize: Style.font.body

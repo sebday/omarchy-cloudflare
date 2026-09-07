@@ -6,12 +6,9 @@
   "author": "seb",
   "description": "Cloudflare account resources, usage, and recent deploys",
   "kinds": [
-    "service",
     "bar-widget"
   ],
-  "keepLoaded": true,
   "entryPoints": {
-    "service": "Service.qml",
     "barWidget": "BarWidget.qml"
   },
   "barWidget": {

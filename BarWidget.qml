@@ -7,11 +7,21 @@ BarWidget {
   id: root
   moduleName: "evo.cloudflare"
 
-  readonly property var cf: bar?.shell?.serviceFor("evo.cloudflare")
+  // Own the service here. A replacement bar (evo.monitors) only exposes a
+  // scoped shell for *its* plugin, so bar.shell.serviceFor("evo.cloudflare")
+  // is always null on this desktop.
+  readonly property var cf: serviceLoader.item
   readonly property bool loggedIn: cf && cf.loggedIn
   readonly property bool warningState: cf && cf.warning
   readonly property bool busy: cf && cf.busy
 
+
+  function injectService() {
+    var svc = serviceLoader.item
+    if (!svc) return
+    if ("shell" in svc && root.bar && root.bar.shell) svc.shell = root.bar.shell
+    if ("settingsOverride" in svc) svc.settingsOverride = root.settings
+  }
 
   function injectPanel() {
     var target = panelLoader.item
@@ -72,8 +82,25 @@ BarWidget {
   width: implicitWidth
   height: implicitHeight
 
-  onBarChanged: injectPanel()
-  onSettingsChanged: injectPanel()
+  onBarChanged: {
+    injectService()
+    injectPanel()
+  }
+  onSettingsChanged: {
+    injectService()
+    injectPanel()
+  }
+
+  Loader {
+    id: serviceLoader
+    active: true
+    source: Qt.resolvedUrl("Service.qml")
+    visible: false
+    onLoaded: {
+      root.injectService()
+      Qt.callLater(root.injectService)
+    }
+  }
 
   Loader {
     id: panelLoader

@@ -11,6 +11,7 @@ Item {
 
   property var shell: null
   property var manifest: null
+  property var settingsOverride: null
 
   readonly property string tokenScript: Qt.resolvedUrl("bin/load-token").toString().replace("file://", "")
   readonly property string passTokenPath: "omarchy/cloudflare/read-all"
@@ -73,6 +74,12 @@ Item {
       ? manifest.barWidget.defaults : {}
     var merged = {}
     for (var key in defaults) merged[key] = defaults[key]
+    if (settingsOverride && typeof settingsOverride === "object") {
+      for (var overrideKey in settingsOverride) {
+        if (overrideKey !== "id") merged[overrideKey] = settingsOverride[overrideKey]
+      }
+      return merged
+    }
     if (!shell || !shell.barConfig || !shell.barConfig.layout)
       return merged
     var layout = shell.barConfig.layout
